@@ -475,7 +475,7 @@ function StatusEffectManager.GetCharacterMap(character: Instance): CharacterMap?
 	return characterMaps[character]
 end
 
-function StatusEffectManager.GetClientMap(): CharacterMap?
+function StatusEffectManager.GetClientMap(): CharacterMapClient?
 	return characterMaps[game.Players.LocalPlayer.Character]
 end
 function StatusEffectManager.GetAllCharacters(): {CharacterMap}
