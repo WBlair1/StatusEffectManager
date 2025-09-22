@@ -206,7 +206,7 @@ end
 
 -- Internal: Start and manage an effect's lifecycle
 function StatusEffectManager:_startEffect(effect: EffectModule): ()
-	local MaxLifecycle = 30
+	local MaxLifetime = 30
 	
 	assert(effect ~= nil, "Effect must not be nil")
 	effect.Character = self.Character
@@ -258,11 +258,11 @@ function StatusEffectManager:_startEffect(effect: EffectModule): ()
 		end
 	end
 	
-	local LifecycleThread = task.delay(MaxLifecycle, cleanup)
+	local LifetimeThread = task.delay(MaxLifetime, cleanup)
 	-- Ensure cleanup is only done once, whether Destroyed is fired manually or by thread dying
 	effect.Destroyed:Once(cleanup)
 	effect.Destroyed:Once(function()
-		task.cancel(LifecycleThread)
+		task.cancel(LifetimeThread)
 	end)
 	event = RunService.PostSimulation:Connect(function()
 		if coroutine.status(thread) == "dead" then
