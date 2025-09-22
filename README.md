@@ -7,7 +7,7 @@ Create status effects, track damage dealt/recieved, and more with client-server 
 1. Create a folder in ServerStorage called "StatusEffects". Add a folder in your status effect folder called "PremadeEffects". This is for you to call with CharacterMap:AddPremadeEffects(). Example:
 ```luau
 -- The client sided functionality of status effects uses refX. It's not native to the module, unfortunately.
-local statusManager = require(game.ReplicatedStorage.Modules.Essential.StatusEffectManager)
+local statusManager = require(game.ReplicatedStorage.Modules.StatusEffectManager)
 type Effect=statusManager.EffectModule
 local EffectFolder = game.ReplicatedStorage.VFX
 local VFX = require(EffectFolder.Base)
