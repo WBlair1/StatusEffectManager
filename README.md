@@ -4,7 +4,10 @@ Create status effects, track damage dealt/recieved, manage max lifetime of effec
 # Documentation
 
 ## Creating effects.
-1. Create a folder in ServerStorage called "StatusEffects". Add a folder in your status effect folder called "PremadeEffects". This is for you to call with CharacterMap:AddPremadeEffects(). Example:
+1. Create a folder in ServerStorage called "StatusEffects". Add a folder in your status effect folder called "PremadeEffects". This is for you to call with CharacterMap:AddPremadeEffects(). 
+<details>
+<summary>Example:</summary>
+
 ```luau
 -- The client sided functionality of status effects uses refX. It's not native to the module, unfortunately.
 local statusManager = require(game.ReplicatedStorage.Modules.StatusEffectManager)
@@ -84,6 +87,8 @@ end
 
 return MyEffect
 ```
+</details>
+
 2. Copy the example above for your own effects! You can place effects not called with AddPremadeEffects() in any folder, but I recommend adding them in the StatusEffects folder.
 
 ## Methods
