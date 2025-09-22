@@ -89,7 +89,7 @@ return MyEffect
 ```
 </details>
 
-2. Copy the example above for your own effects! You can place effects not called with AddPremadeEffects() in any folder, but I recommend adding them in the StatusEffects folder.
+2. Copy the example above for your own effects! I recommend adding them in the StatusEffects folder (but not the PremadeEffects one).
 
 ## Methods
 - init(): Initializes module and sets discriminators of all status effects.
