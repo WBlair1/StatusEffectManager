@@ -1,5 +1,5 @@
 # StatusEffectManager
-Create status effects, track damage dealt/recieved, and more with client-server architecture easily.
+Create status effects, track damage dealt/recieved, manage max lifecycle of effects, and more with client-server architecture easily.
 
 # Documentation
 
