@@ -122,3 +122,4 @@ return MyEffect
   - newClient() -> CharacterMapClient: Returns a character map similar to the server character map, with a few revisions, such as not being able to interact with effects (AddEffect or RemoveEffect).
   - GetClientMap() -> CharacterMap: Returns character map based on local player character instance.
   
+Credit to sleitnick for the Signal module.
