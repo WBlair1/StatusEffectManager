@@ -197,7 +197,6 @@ function StatusEffectManager:_startEffect(effect: EffectModule): ()
 	
 	assert(effect ~= nil, "Effect must not be nil")
 	effect.Character = self.Character
-	effect.Destroyed = Signal.new()
 	-- Insert into Effects table immediately so it is always up to date
 	table.insert(self.Effects, effect)
 	self.EffectAdded:Fire(effect)
