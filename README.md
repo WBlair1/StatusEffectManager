@@ -33,7 +33,7 @@ return MyEffect
 ```
 </details>
 
-2. Copy the example above for your own effects! Status effects can really be placed anywhere, such as in a tool, as long as they are required. Premade effects are meant to given easy access to all scripts, which is why they're placed in ReplicatedStorage/StatusEffects/PremadeEffects.
+2. Copy the example above for your own effects! Status effects can really be placed anywhere, such as in a tool, as long as they are required. Premade effects are meant to given easy access to all scripts, which is why they're placed in ReplicatedStorage/StatusEffects/PremadeEffects **and can be added by name** (example `CharacterMap:AddPremadeEffect("Test")`)
 
 ## Methods
 - init(): Initializes module and sets discriminators of all status effects.
