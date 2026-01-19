@@ -95,7 +95,7 @@ function StatusEffectManager.RegisterEffect(): EffectModule
 		Destroy = function() end,
 		Destroyed = Signal.new(),
 		Character = nil,
-		Discriminator = 0
+		Discriminator = Random.new():NextNumber()
 	}
 end
 
