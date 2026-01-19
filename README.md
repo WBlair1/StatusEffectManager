@@ -9,79 +9,24 @@ Create status effects, track damage dealt/recieved, manage max lifetime of effec
 <summary>Example:</summary>
 
 ```luau
--- The client sided functionality of status effects uses refX. It's not native to the module, unfortunately.
-local statusManager = require(game.ReplicatedStorage.Modules.StatusEffectManager)
-type Effect=statusManager.EffectModule
-local EffectFolder = game.ReplicatedStorage.VFX
-local VFX = require(EffectFolder.Base)
+--
+local Status = require(game.ReplicatedStorage.Modules.StatusEffectManager)
 
-function killeffect(char,dmg)
-	local function burn()
-		local humdesc = char.Humanoid:GetAppliedDescription() 
-		humdesc.Shirt = 0
-		humdesc.Pants = 0
-		humdesc.HeadColor = Color3.fromRGB(0, 0, 0)
-		humdesc.TorsoColor = Color3.fromRGB(0, 0, 0)
-		humdesc.RightArmColor = Color3.fromRGB(0, 0, 0)
-		humdesc.LeftArmColor = Color3.fromRGB(0, 0, 0)
-		humdesc.RightLegColor = Color3.fromRGB(0, 0, 0)
-		humdesc.LeftLegColor = Color3.fromRGB(0, 0, 0)
-		char.Humanoid:ApplyDescription(humdesc)
-		for _,part in pairs(char:GetDescendants()) do
-			if part:IsA("Shirt") then
-				part:Destroy()
-			end
-			if part:IsA("Pants") then
-				part:Destroy()
-			end
-			if part:IsA("Accessory") then
-				part:Destroy()
-			end
-			if part:IsA("BasePart") then
-				part.Color = Color3.fromRGB(0,0,0)
-				part.Material = Enum.Material.Plastic
-			end
-		end
-	end
+local MyEffect = statusManager.RegisterEffect()
+MyEffect.Name = "Test"
 
-	if char:HasTag("Dead") then
-		burn()
-	end
-	if not char.Humanoid then return end
-	if char.Humanoid.Health - dmg > 0 then return end
-	char.Humanoid.Health =- dmg
-	task.wait()
-	if char.Humanoid.Health > 0 then return end
-
-	burn()
-end
-
-local MyEffect:Effect = statusManager.RegisterEffect()
-MyEffect.Name = "Burn"
-
-function MyEffect:OnStart()
-	self.Character:AddTag("Burning")
-	VFX.new(self.Character,"Burn","BurnEntity"):Start(game.Players:GetPlayers())
-	local scorchsfx = Instance.new("Sound",self.Character.PrimaryPart)
-	scorchsfx.SoundId = "rbxassetid://3518167306"
-	scorchsfx.Volume = .65
-	scorchsfx:Play()
-	game.Debris:AddItem(scorchsfx,scorchsfx.TimeLength+2)
-	for i=1,60 do
-		self.Character.Humanoid:TakeDamage(.5)
-		killeffect(self.Character,.5)
-		if self.Character.Humanoid:GetState() == Enum.HumanoidStateType.Swimming then
-			self:Destroy()
-		end
-		task.wait(.2)
-	end
+function MyEffect:OnStart(AnyVariablesPassed)
+	print(self.Character) --WBlair
 	self.Destroyed:Once(function()
-		scorchsfx:Destroy()
+		print("also ended")
 	end)
+	print(AnyVariablesPassed) --"Hello World"
+	task.wait(30)
+	print("never reaches here due to max lifetime - for memory leak cleanup reasons")
 end
 
 function MyEffect:OnStop()
-	self.Character:RemoveTag("Burning")
+	print("stopped")
 end
 
 
