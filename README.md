@@ -9,7 +9,6 @@ Create status effects, track damage dealt/recieved, manage max lifetime of effec
 <summary>Example:</summary>
 
 ```luau
---
 local Status = require(game.ReplicatedStorage.Modules.StatusEffectManager)
 
 local MyEffect = statusManager.RegisterEffect()
