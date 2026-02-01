@@ -220,7 +220,7 @@ function StatusEffectManager:_startEffect(effect: EffectModule, ...): ()
 		if destroyed then return end
 		destroyed = true
 		if effect.OnStop then
-			effect:OnStop(effect)
+			effect:OnStop()
 		end
 		if event then event:Disconnect() end
 
