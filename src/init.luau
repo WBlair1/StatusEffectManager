@@ -184,7 +184,7 @@ function StatusEffectManager:WaitForEffect(effectName: string): EffectModule
 		task.wait()
 		effect = self:GetEffectFromName(effectName)
 	end
-	return effect :: EffectModule -- [FIX] Cast assertion
+	return effect :: EffectModule
 end
 
 function StatusEffectManager:IsPartDescendentOfCharacter(part: BasePart): boolean
@@ -211,7 +211,6 @@ function StatusEffectManager:_startEffect(effect: EffectModule, ...): ()
 		effect.Destroyed:Fire()
 	end
 
-	-- [FIX] Passed varargs correctly
 	local thread = task.spawn(effect.OnStart, effect, ...)
 
 	local event: RBXScriptConnection? = nil
@@ -234,7 +233,7 @@ function StatusEffectManager:_startEffect(effect: EffectModule, ...): ()
 			task.wait()
 			task.cancel(thread)
 			effect.Destroyed:DisconnectAll()
-			if effect.Destroyed.Destroy then -- Check if Destroy exists on Signal
+			if effect.Destroyed.Destroy then
 				effect.Destroyed:Destroy()
 			end
 		end
