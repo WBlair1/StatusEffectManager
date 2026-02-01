@@ -1,3 +1,13 @@
+local Settings={}
+
+Settings.EffectsFolder = 
+	game:GetService("ServerStorage"):FindFirstChild("StatusEffects")
+
+Settings.CombatTime=10
+
+Settings.MaxLifetime=30
+
+
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -12,29 +22,25 @@ local function findInTableByName(tbl: {any}, name: string): any?
 	return nil
 end
 
--- Define types
 type Character = Model & {
-	PrimaryPart:BasePart & {
-		RootAttachment:Attachment,
-	},
-	Humanoid:Humanoid & {
-		Animator:Animator,
-	},
-	Ragdoll:BoolValue
+	Humanoid: Humanoid?,
+	PrimaryPart: BasePart?
 }
+
 export type EffectModule = { 
 	Name: string?,
-	OnStart: (EffectModule)->(),
-	OnStop: (EffectModule)->(),
-	Destroy: (EffectModule)->(),
+	OnStart: (EffectModule, ...any) -> (),
+	OnStop: (EffectModule) -> (),
+	Destroy: (EffectModule) -> (),
 	Destroyed: Signal.Signal<>,
 	Character: Character,
 	Discriminator: number,
 }
+
 export type CharacterMap = {
 	Effects: {EffectModule},
 	LastDamage: {Dealt: number, Received: number},
-	LastKilled: CharacterMap?,
+	LastKilled: CharacterMap,
 	InCombat: boolean,
 	InCombatTimerFunction: thread?, 
 	Player: Player?,
@@ -42,13 +48,13 @@ export type CharacterMap = {
 	CombatChanged: Signal.Signal<boolean>,
 	EffectAdded: Signal.Signal<EffectModule>,
 	EffectRemoved: Signal.Signal<EffectModule>, 
-	DamageReceivedChanged: Signal.Signal<CharacterMap,number>,
-	DamageDealtChanged: (Signal.Signal<CharacterMap,number>),
+	DamageReceivedChanged: Signal.Signal<CharacterMap, number>,
+	DamageDealtChanged: Signal.Signal<CharacterMap, number>,
 	LastKilledChanged: Signal.Signal<CharacterMap>,
 
-	AddEffect: (self: CharacterMap, effect: EffectModule) -> (),
+	AddLocalEffect: (self: CharacterMap, effect: EffectModule, ...any) -> (),
 	RemoveEffect: (self: CharacterMap, effectName: string) -> (),
-	AddPremadeEffect: (self: CharacterMap, effectName: string) -> (),
+	AddEffect: (self: CharacterMap, instanceName: string, ...any) -> (),
 	GetEffectFromName: (self: CharacterMap, effectName: string) -> EffectModule?,
 	GetAllEffectFromDiscriminator: (self: CharacterMap, effect: EffectModule) -> {EffectModule},
 	GetAllEffectFromName: (self: CharacterMap, effectName: string) -> {EffectModule},
@@ -59,23 +65,21 @@ export type CharacterMap = {
 type CharacterMapClient = {
 	Effects: {EffectModule},
 	LastDamage: {Dealt: number, Received: number},
-	LastKilled: CharacterMap?,
+	LastKilled: Instance?,
 	InCombat: boolean,
 	InCombatTimerFunction: thread?, 
 	Player: Player?,
-	Character: Instance,
+	Character: Character,
 	CombatChanged: Signal.Signal<boolean>,
 	EffectAdded: Signal.Signal<EffectModule>,
-	EffectRemoved: Signal.Signal<string>, 
-	DamageReceivedChanged: Signal.Signal<Character,number>,
-	DamageDealtChanged: Signal.Signal<Character,number>,
-	LastKilledChanged: Signal.Signal<Character>,
+	EffectRemoved: Signal.Signal<EffectModule>,
+	DamageReceivedChanged: Signal.Signal<Instance, number>,
+	DamageDealtChanged: Signal.Signal<Instance, number>,
+	LastKilledChanged: Signal.Signal<Instance>,
 }
 
 local StatusEffectManager = {}
 StatusEffectManager.__index = StatusEffectManager
-
-
 
 local characterMaps: {[Instance]: CharacterMap} = {}
 
@@ -87,66 +91,62 @@ if RunService:IsServer() then
 else
 	ToClient = script:WaitForChild("ToClient", 5) :: RemoteEvent
 end
+
 function StatusEffectManager.RegisterEffect(): EffectModule
 	return {
 		Name = "",
 		OnStart = function() end,
 		OnStop = function() end,
 		Destroy = function() end,
-		Destroyed = Signal.new(),
-		Character = nil,
+		Destroyed = nil,
+		Character = nil :: any,
 		Discriminator = Random.new():NextNumber()
 	}
 end
 
 function StatusEffectManager.init(): ()
-script.Initializer.Disabled=false
+	script.Initializer.Disabled = false
 end
 
 
 
-local CombatTime = 10
-
-function StatusEffectManager:AddEffect(effect: EffectModule): ()
+function StatusEffectManager:AddLocalEffect(effect: EffectModule, ...): ()
 	assert(effect ~= nil, "Effect must not be nil")
 	local newEffect = table.clone(effect)
-	for k,v in effect do
-		newEffect[k] = v
-	end
-	self:_startEffect(newEffect)
+	self:_startEffect(newEffect, ...)
 end
 
 function StatusEffectManager:RemoveEffect(effectName: string): ()
 	assert(type(effectName) == "string", "effectName must be a string")
 	local effect: EffectModule? = self:GetEffectFromName(effectName)
 	if effect then
-		-- Always call Destroy, which will fire Destroyed and trigger cleanup
 		if effect.Destroy then
 			effect:Destroy()
+		else
+			warn("Cannot destroy effect:",effectName)
 		end
 	end
 end
 
-function StatusEffectManager:AddPremadeEffect(effectName: string): ()
-	assert(type(effectName) == "string", "effectName must be a string")
-	local PremadeEffectsFolder = game:GetService("ServerStorage"):FindFirstChild("StatusEffects")
-		and game:GetService("ServerStorage"):FindFirstChild("StatusEffects"):FindFirstChild("PremadeEffects")
-	if PremadeEffectsFolder then
-		local findModule = PremadeEffectsFolder:FindFirstChild(effectName)
+function StatusEffectManager:AddEffect(instanceName: string, ...): ()
+	assert(type(instanceName) == "string", "instanceName must be a string")
+
+	if Settings.EffectsFolder then
+		local findModule = Settings.EffectsFolder:FindFirstChild(instanceName, true)
 		if findModule and findModule:IsA("ModuleScript") then
 			local success, requireEffect = pcall(require, findModule)
 			if success and typeof(requireEffect) == "table" then
 				local newEffect: EffectModule = table.clone(requireEffect)
 				newEffect.Character = self.Character
-				self:_startEffect(newEffect)
+				self:_startEffect(newEffect, ...)
 			else
-				warn("Failed to require or invalid type for premade effect module: " .. effectName)
+				warn("Failed to require or invalid type for premade effect module: " .. instanceName)
 			end
 		else
-			warn("Couldn't find premade effect module: " .. effectName)
+			warn("Couldn't find effect module:",instanceName)
 		end
 	else
-		warn("PremadeEffects folder not found.")
+		warn("Generic effects folder not found.")
 	end
 end
 
@@ -180,28 +180,25 @@ end
 function StatusEffectManager:WaitForEffect(effectName: string): EffectModule
 	assert(type(effectName) == "string", "effectName must be a string")
 	local effect = self:GetEffectFromName(effectName)
-	repeat
+	while not effect do
 		task.wait()
 		effect = self:GetEffectFromName(effectName)
-	until effect
-	return effect
+	end
+	return effect :: EffectModule -- [FIX] Cast assertion
 end
 
 function StatusEffectManager:IsPartDescendentOfCharacter(part: BasePart): boolean
 	return self.Character ~= nil and part:IsDescendantOf(self.Character)
 end
 
--- Internal: Start and manage an effect's lifecycle
-function StatusEffectManager:_startEffect(effect: EffectModule): ()
-	local MaxLifetime = 30
-	
+function StatusEffectManager:_startEffect(effect: EffectModule, ...): ()
 	assert(effect ~= nil, "Effect must not be nil")
-	effect.Character = self.Character
-	-- Insert into Effects table immediately so it is always up to date
+	effect.Destroyed = Signal.new()
 	table.insert(self.Effects, effect)
 	self.EffectAdded:Fire(effect)
+
 	if self.Player then
-		ToClient:FireClient(self.Player, effect, "EffectAdded")
+		ToClient:FireClient(self.Player, effect.Name, "EffectAdded")
 		local CharacterRemoved = self.Player.CharacterRemoving:Once(function()
 			effect:Destroy()
 		end)
@@ -209,13 +206,14 @@ function StatusEffectManager:_startEffect(effect: EffectModule): ()
 			CharacterRemoved:Disconnect()
 		end)
 	end
+
 	function effect:Destroy()
 		effect.Destroyed:Fire()
 	end
-	
-	local thread = task.defer(effect.OnStart,effect) --coroutine.create(effect.OnStart)
-	--coroutine.resume(thread, effect)
-	
+
+	-- [FIX] Passed varargs correctly
+	local thread = task.spawn(effect.OnStart, effect, ...)
+
 	local event: RBXScriptConnection? = nil
 	local destroyed = false
 
@@ -223,7 +221,7 @@ function StatusEffectManager:_startEffect(effect: EffectModule): ()
 		if destroyed then return end
 		destroyed = true
 		if effect.OnStop then
-			effect:OnStop()
+			effect:OnStop(effect)
 		end
 		if event then event:Disconnect() end
 
@@ -233,9 +231,12 @@ function StatusEffectManager:_startEffect(effect: EffectModule): ()
 		end
 
 		if coroutine.status(thread) ~= "dead" then
-			--in case somehow it still exists...
 			task.wait()
 			task.cancel(thread)
+			effect.Destroyed:DisconnectAll()
+			if effect.Destroyed.Destroy then -- Check if Destroy exists on Signal
+				effect.Destroyed:Destroy()
+			end
 		end
 
 		self.EffectRemoved:Fire(effect)
@@ -243,9 +244,9 @@ function StatusEffectManager:_startEffect(effect: EffectModule): ()
 			ToClient:FireClient(self.Player, effect.Name, "EffectRemoved")
 		end
 	end
-	
-	local LifecycleThread = task.delay(MaxLifetime, cleanup)
-	-- Ensure cleanup is only done once, whether Destroyed is fired manually or by thread dying
+
+	local LifecycleThread = task.delay(Settings.MaxLifetime, cleanup)
+
 	effect.Destroyed:Once(cleanup)
 	effect.Destroyed:Once(function()
 		task.cancel(LifecycleThread)
@@ -255,14 +256,13 @@ function StatusEffectManager:_startEffect(effect: EffectModule): ()
 			effect.Destroyed:Fire()
 		end
 	end)
-
-
 end
 
 function StatusEffectManager.new(character: Instance): CharacterMap
 	assert(not characterMaps[character], "CharacterMap already found for " .. character.Name .. "!")
 	local self = {} :: CharacterMap
-	self.Character = character
+
+	self.Character = character :: Character 
 	self.Player = Players:GetPlayerFromCharacter(character)
 	self.Effects = {}
 	self.LastDamage = {
@@ -272,14 +272,16 @@ function StatusEffectManager.new(character: Instance): CharacterMap
 	self.LastKilled = nil
 	self.InCombat = false
 	self.InCombatTimerFunction = nil
+
 	self.CombatChanged = Signal.new()
 	self.EffectAdded = Signal.new()
 	self.EffectRemoved = Signal.new()
 	self.DamageReceivedChanged = Signal.new()
 	self.DamageDealtChanged = Signal.new()
 	self.LastKilledChanged = Signal.new()
+
 	local function TimerCombatFinished(): ()
-		if self.CombatChanged and self.CombatChanged:GetConnections() and #self.CombatChanged:GetConnections() > 0 then
+		if self.CombatChanged then
 			self.CombatChanged:Fire(false)
 			if self.Player then
 				ToClient:FireClient(self.Player, false, "Combat")
@@ -302,7 +304,7 @@ function StatusEffectManager.new(character: Instance): CharacterMap
 			if self.InCombatTimerFunction then
 				task.cancel(self.InCombatTimerFunction)
 			end
-			self.InCombatTimerFunction = task.delay(CombatTime, function()
+			self.InCombatTimerFunction = task.delay(Settings.CombatTime, function()
 				TimerCombatFinished()
 			end)
 		end
@@ -366,8 +368,9 @@ end
 
 function StatusEffectManager.newClient(): CharacterMapClient
 	local self = {} :: CharacterMapClient
-	local character = game.Players.LocalPlayer.Character
-	self.Character = character
+	local character = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+
+	self.Character = character :: Character
 	self.Player = Players.LocalPlayer
 	self.Effects = {}
 	self.LastDamage = { Dealt = 0, Received = 0 }
@@ -403,6 +406,7 @@ function StatusEffectManager.newClient(): CharacterMapClient
 	self.EffectAdded:Connect(function(Effect: EffectModule)
 		table.insert(self.Effects, Effect)
 	end)
+
 	self.EffectRemoved:Connect(function(Effect: EffectModule)
 		local index = table.find(self.Effects, Effect)
 		if index then
@@ -416,16 +420,20 @@ function StatusEffectManager.newClient(): CharacterMapClient
 			if ChangeType == "EffectAdded" then
 				self.EffectAdded:Fire(data)
 			elseif ChangeType == "EffectRemoved" then
-				self.EffectRemoved:Fire(data)
+				local effectName = data :: string
+				local foundEffect = findInTableByName(self.Effects, effectName)
+				if foundEffect then
+					self.EffectRemoved:Fire(foundEffect)
+				end
 			elseif ChangeType == "Combat" and typeof(data) == "boolean" then
 				self.InCombat = data
 				self.CombatChanged:Fire(data)
 			elseif ChangeType == "DamageDealt" then
 				self.LastDamage.Dealt = data[2]
-				self.DamageDealtChanged:Fire(data[1],data[2])
+				self.DamageDealtChanged:Fire(data[1], data[2])
 			elseif ChangeType == "DamageReceived" then
 				self.LastDamage.Received = data[2]
-				self.DamageReceivedChanged:Fire(data[1],data[2])
+				self.DamageReceivedChanged:Fire(data[1], data[2])
 			elseif ChangeType == "LastKilled" and typeof(data) == "Instance" then
 				self.LastKilled = data
 				self.LastKilledChanged:Fire(data)
@@ -455,13 +463,18 @@ function StatusEffectManager.newClient(): CharacterMapClient
 	return instance
 end
 
-function StatusEffectManager.GetCharacterMap(character: Instance): CharacterMap?
+function StatusEffectManager.GetCharacterMap(character: Instance): CharacterMap
 	return characterMaps[character]
 end
 
 function StatusEffectManager.GetClientMap(): CharacterMapClient?
-	return characterMaps[game.Players.LocalPlayer.Character]
+	local char = game.Players.LocalPlayer.Character
+	if char then
+		return characterMaps[char] :: CharacterMapClient?
+	end
+	return nil
 end
+
 function StatusEffectManager.GetAllCharacters(): {CharacterMap}
 	local characterTable: {CharacterMap} = {}
 	for _, v in characterMaps do
