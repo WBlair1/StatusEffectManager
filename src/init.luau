@@ -67,7 +67,6 @@ type CharacterMapClient = {
 	LastDamage: {Dealt: number, Received: number},
 	LastKilled: Instance?,
 	InCombat: boolean,
-	InCombatTimerFunction: thread?, 
 	Player: Player?,
 	Character: Character,
 	CombatChanged: Signal.Signal<boolean>,
@@ -374,7 +373,6 @@ function StatusEffectManager.newClient(): CharacterMapClient
 	self.LastDamage = { Dealt = 0, Received = 0 }
 	self.LastKilled = nil
 	self.InCombat = false
-	self.InCombatTimerFunction = nil
 
 	self.CombatChanged = Signal.new()
 	self.EffectAdded = Signal.new()
