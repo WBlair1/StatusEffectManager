@@ -198,12 +198,13 @@ function StatusEffectManager:_startEffect(effect: EffectModule, ...): ()
 	self.EffectAdded:Fire(effect)
 
 	if self.Player then
-		ToClient:FireClient(self.Player, effect.Name, "EffectAdded")
+		ToClient:FireClient(self.Player, effect, "EffectAdded")
 		local CharacterRemoved = self.Player.CharacterRemoving:Once(function()
 			effect:Destroy()
 		end)
 		effect.Destroyed:Once(function()
 			CharacterRemoved:Disconnect()
+			ToClient:FireClient(self.Player, effect, "EffectRemoved")
 		end)
 	end
 
@@ -239,9 +240,7 @@ function StatusEffectManager:_startEffect(effect: EffectModule, ...): ()
 		end
 
 		self.EffectRemoved:Fire(effect)
-		if self.Player then
-			ToClient:FireClient(self.Player, effect.Name, "EffectRemoved")
-		end
+
 	end
 
 	local LifecycleThread = task.delay(Settings.MaxLifetime, cleanup)
@@ -402,12 +401,12 @@ function StatusEffectManager.newClient(): CharacterMapClient
 		characterMaps[character] = nil
 	end
 
-	self.EffectAdded:Connect(function(Effect: EffectModule)
-		table.insert(self.Effects, Effect)
+	self.EffectAdded:Connect(function(EffectName: string)
+		table.insert(self.Effects, EffectName)
 	end)
 
-	self.EffectRemoved:Connect(function(Effect: EffectModule)
-		local index = table.find(self.Effects, Effect)
+	self.EffectRemoved:Connect(function(EffectName: string)
+		local index = table.find(self.Effects, EffectName)
 		if index then
 			table.remove(self.Effects, index)
 		end
@@ -419,11 +418,7 @@ function StatusEffectManager.newClient(): CharacterMapClient
 			if ChangeType == "EffectAdded" then
 				self.EffectAdded:Fire(data)
 			elseif ChangeType == "EffectRemoved" then
-				local effectName = data :: string
-				local foundEffect = findInTableByName(self.Effects, effectName)
-				if foundEffect then
-					self.EffectRemoved:Fire(foundEffect)
-				end
+				self.EffectRemoved:Fire(data)
 			elseif ChangeType == "Combat" and typeof(data) == "boolean" then
 				self.InCombat = data
 				self.CombatChanged:Fire(data)
